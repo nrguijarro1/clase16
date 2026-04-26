@@ -1,0 +1,238 @@
+\documentclass[aspectratio=169]{beamer}
+\usetheme{Madrid}
+\usecolortheme{seahorse}
+
+\usepackage[spanish]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath, amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\title{Aplicacion de Metodos Numericos a un Modelo Empresarial}
+\subtitle{Euler, Runge-Kutta de 2\textdegree y 4\textdegree orden}
+\author{Nelson Guijarro}
+\institute{Diplomado TICS}
+\date{\today}
+
+\definecolor{codebg}{RGB}{245,245,245}
+\definecolor{codekw}{RGB}{0,90,156}
+\definecolor{codecm}{RGB}{0,120,80}
+
+\lstset{
+  language=Python,
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{codekw}\bfseries,
+  commentstyle=\color{codecm},
+  showstringspaces=false,
+  frame=single,
+  breaklines=true,
+  tabsize=2
+}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{Objetivo del trabajo}
+\textbf{Proposito:} modelar y simular el crecimiento de ventas de una empresa con una EDO no lineal.
+
+\vspace{0.3cm}
+\textbf{Metas especificas:}
+\begin{itemize}
+  \item Relacionar datos historicos de ventas con un modelo diferencial.
+  \item Resolver numericamente usando Euler, RK2 y RK4.
+  \item Comparar precision (error) y eficiencia (tiempo de calculo).
+  \item Interpretar resultados para apoyar decisiones empresariales.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Reto 1: Datos historicos y modelo}
+\textbf{Contexto empresarial:} ventas mensuales (miles de unidades) de un producto en expansion.
+
+\vspace{0.2cm}
+Se propone un crecimiento con saturacion de mercado:
+\[
+\frac{dY}{dt} = rY\left(1 - \frac{Y}{K}\right),
+\]
+donde:
+\begin{itemize}
+  \item $Y(t)$: ventas acumuladas o nivel de ventas,
+  \item $r$: tasa de crecimiento,
+  \item $K$: capacidad maxima del mercado.
+\end{itemize}
+
+\textbf{Ajuste de parametros:} se estiman $r$ y $K$ por minimizacion de error cuadratico contra datos historicos.
+
+\vspace{0.2cm}
+\textbf{Resultados del ajuste ejecutado en Python:}
+\[
+r = 0.24, \qquad K = 980, \qquad SSE = 1838.33
+\]
+\end{frame}
+
+\begin{frame}{Reto 2: Modelo diferencial de primer orden}
+\textbf{EDO seleccionada:} modelo logistico (primer orden, no lineal).
+
+\vspace{0.3cm}
+\textbf{Solucion exacta (referencia):}
+\[
+Y(t)=\frac{K}{1+\left(\frac{K-Y_0}{Y_0}\right)e^{-rt}}.
+\]
+
+\textbf{Interpretacion empresarial:}
+\begin{itemize}
+  \item Al inicio, las ventas crecen rapido por adopcion del producto.
+  \item Con el tiempo, la demanda se estabiliza por saturacion de clientes.
+  \item El valor $K$ permite planificar capacidad, inventarios y metas comerciales.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Reto 3: Implementacion numerica en Python}
+\textbf{Metodos implementados:}
+\begin{itemize}
+  \item Euler explicito.
+  \item Runge-Kutta de 2\textdegree orden (Heun/trapecio explicito).
+  \item Runge-Kutta de 4\textdegree orden.
+\end{itemize}
+
+\textbf{Script principal:} \texttt{reto\_metodos\_numericos.py}
+
+\vspace{0.2cm}
+\textbf{Salidas generadas:}
+\begin{itemize}
+  \item \texttt{trayectorias\_ventas.csv} (trayectorias numericas y exacta).
+  \item \texttt{benchmark\_metodos.csv} (error final y tiempo medio).
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]{Fragmento de codigo (Python)}
+\begin{lstlisting}
+def rk4_step(f, t, y, h):
+    k1 = f(t, y)
+    k2 = f(t + 0.5*h, y + 0.5*h*k1)
+    k3 = f(t + 0.5*h, y + 0.5*h*k2)
+    k4 = f(t + h, y + h*k3)
+    return y + (h/6.0)*(k1 + 2*k2 + 2*k3 + k4)
+
+# EDO de ventas logistic
+# dY/dt = r*Y*(1 - Y/K)
+def sales_ode(t, y):
+    return r_hat * y * (1.0 - y / k_hat)
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{Analisis de error de aproximacion}
+\textbf{Metricas usadas:}
+\begin{itemize}
+  \item MAE: error absoluto medio.
+  \item RMSE: raiz del error cuadratico medio.
+  \item Error final: $|Y_N - Y(t_f)|$.
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{Resultado esperado teorico:}
+\begin{itemize}
+  \item Euler: orden global $\mathcal{O}(h)$.
+  \item RK2: orden global $\mathcal{O}(h^2)$.
+  \item RK4: orden global $\mathcal{O}(h^4)$.
+\end{itemize}
+
+\textbf{Interpretacion:} para el mismo paso $h$, RK4 suele dar mayor precision; Euler requiere pasos mas pequenos para aproximar igual.
+\end{frame}
+
+\begin{frame}{Resultados de error (h = 1.0)}
+\begin{table}
+\centering
+\small
+\begin{tabular}{lcccc}
+\toprule
+Metodo & MAE vs exacta & RMSE vs exacta & MAE vs historico & RMSE vs historico \\
+\midrule
+Euler & 15.4751 & 17.6279 & 15.9131 & 20.0366 \\
+RK2   & 1.1831  & 1.3731  & 10.2896 & 11.8135 \\
+RK4   & 0.0020  & 0.0022  & 10.0863 & 11.8912 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\vspace{0.1cm}
+\textbf{Orden observado (convergencia):}
+Euler $\approx 1$, RK2 $\approx 2$, RK4 $\approx 4$.
+\end{frame}
+
+\begin{frame}{Analisis de eficiencia computacional}
+\textbf{Metodologia:}
+\begin{itemize}
+  \item Se evaluan varios pasos: $h = 1.0, 0.5, 0.25, 0.125$.
+  \item Se mide tiempo promedio por simulacion (ms).
+  \item Se compara error final vs solucion exacta.
+\end{itemize}
+
+\vspace{0.2cm}
+\textbf{Benchmark (resultados medidos):}
+\begin{table}
+\centering
+\begin{tabular}{lccc}
+\toprule
+Metodo & $h$ & Error final & Tiempo medio (ms) \\
+\midrule
+Euler & 1.000 & 17.2269 & 0.001856 \\
+RK2   & 1.000 & 1.9889  & 0.002706 \\
+RK4   & 1.000 & 0.0029  & 0.005720 \\
+\bottomrule
+\end{tabular}
+\end{table}
+\end{frame}
+
+\begin{frame}[fragile]{Reproducibilidad (Python)}
+Ejecutar en terminal dentro de la carpeta del proyecto:
+
+\begin{lstlisting}
+python reto_metodos_numericos.py
+\end{lstlisting}
+
+El script imprime tablas de error, orden de convergencia y tiempos, y ademas genera:
+\begin{itemize}
+  \item \texttt{trayectorias\_ventas.csv}
+  \item \texttt{benchmark\_metodos.csv}
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Discusion empresarial}
+\begin{itemize}
+  \item El modelo permite anticipar cuando las ventas empiezan a desacelerar.
+  \item Facilita decisiones de produccion y logistica al estimar la saturacion del mercado.
+  \item Para analisis rapido, Euler puede ser util.
+  \item Para planeacion mas fina y proyecciones, RK4 entrega mayor confiabilidad numerica.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Conclusiones}
+\begin{enumerate}
+  \item Se conectaron datos historicos con una EDO de negocio (crecimiento log\'istico).
+  \item Se resolvio numericamente con Euler, RK2 y RK4 en Python.
+  \item Se evidencio la relacion precision-costo computacional entre metodos.
+  \item RK4 fue el mas preciso; Euler el mas simple; RK2 un compromiso intermedio.
+\end{enumerate}
+\end{frame}
+
+\begin{frame}{Trabajo futuro}
+\begin{itemize}
+  \item Extender a sistema de EDOs (ventas, inventario y backlog).
+  \item Incluir estacionalidad y choques de demanda.
+  \item Integrar optimizacion de parametros con datos reales de la empresa.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\centering
+\Huge Gracias
+\end{frame}
+
+\end{document}
